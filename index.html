@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Vault — AI 提示詞收藏庫</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0D1117;
+    --surface: #161B22;
+    --surface2: #1E2530;
+    --border: #2A3240;
+    --accent: #7C3AED;
+    --accent-glow: rgba(124,58,237,0.35);
+    --accent2: #A78BFA;
+    --text: #E6EDF3;
+    --text-muted: #8B949E;
+    --text-faint: #4A5568;
+    --success: #3FB950;
+    --danger: #F85149;
+    --tag-bg: #1E1535;
+    --tag-border: #3D2B70;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.6;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative; z-index: 10;
+    padding: 28px 32px 0;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), #A78BFA);
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 18px; flex-shrink: 0;
+    box-shadow: 0 0 18px var(--accent-glow);
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #fff 40%, var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .count-badge {
+    margin-left: auto;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px; color: var(--text-muted);
+    font-family: 'Syne', sans-serif;
+    letter-spacing: 0.5px;
+  }
+  .count-badge span { color: var(--accent2); font-weight: 700; }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    position: relative; z-index: 10;
+    max-width: 1100px; margin: 0 auto;
+    padding: 24px 32px 80px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 14px 18px;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--text-faint);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-head svg { opacity: 0.5; }
+
+  /* ── FORM ── */
+  .form-wrap { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  label { font-size: 11px; color: var(--text-muted); font-weight: 500; display: block; margin-bottom: 5px; letter-spacing: 0.4px; }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    resize: none;
+  }
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  select option { background: var(--surface2); }
+  textarea { min-height: 110px; line-height: 1.6; }
+
+  .tag-input-row { display: flex; gap: 6px; }
+  .tag-input-row input { flex: 1; }
+
+  .btn {
+    border: none; cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; letter-spacing: 0.4px;
+    border-radius: 8px; transition: all 0.18s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff; padding: 10px 0; width: 100%;
+    font-size: 13px;
+    box-shadow: 0 4px 18px var(--accent-glow);
+  }
+  .btn-primary:hover { background: #6D28D9; transform: translateY(-1px); box-shadow: 0 6px 24px var(--accent-glow); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-sm {
+    padding: 6px 12px; font-size: 12px;
+    background: var(--surface2); color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-sm:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── TAG PILLS (form) ── */
+  .tag-pills { display: flex; flex-wrap: wrap; gap: 5px; min-height: 22px; }
+  .tag-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--tag-bg); border: 1px solid var(--tag-border);
+    border-radius: 20px; padding: 2px 9px 2px 10px;
+    font-size: 11px; color: var(--accent2);
+  }
+  .tag-pill button {
+    border: none; background: transparent; color: var(--text-faint);
+    cursor: pointer; font-size: 13px; line-height: 1;
+    padding: 0; transition: color 0.15s;
+  }
+  .tag-pill button:hover { color: var(--danger); }
+
+  /* ── CATEGORY NAV ── */
+  .cat-list { padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .cat-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 13px; color: var(--text-muted);
+    transition: all 0.15s; border: 1px solid transparent;
+    user-select: none;
+  }
+  .cat-item:hover { background: var(--surface2); color: var(--text); }
+  .cat-item.active { background: var(--tag-bg); border-color: var(--tag-border); color: var(--accent2); font-weight: 600; }
+  .cat-count { font-size: 10px; background: var(--surface2); border-radius: 10px; padding: 1px 7px; color: var(--text-faint); }
+  .cat-item.active .cat-count { background: var(--tag-bg); color: var(--accent); }
+
+  /* ── CONTENT AREA ── */
+  .content-area { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── SEARCH & TOOLBAR ── */
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  .search-wrap { position: relative; flex: 1; }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.4; pointer-events: none; }
+  .search-wrap input { padding-left: 38px; }
+  .sort-select { width: 140px; }
+
+  /* ── GRID ── */
+  .prompt-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── CARD ── */
+  .prompt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    cursor: default;
+    animation: cardIn 0.3s ease both;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .prompt-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent 60%, rgba(124,58,237,0.06));
+    pointer-events: none;
+  }
+  .prompt-card:hover { border-color: #3D2B70; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+  /* shimmer on copy */
+  .prompt-card.shimmer::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgba(167,139,250,0.18) 50%, transparent 60%);
+    animation: shimmerSlide 0.55s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes shimmerSlide {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+  }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 700;
+    color: var(--text); line-height: 1.35;
+    flex: 1;
+  }
+  .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn {
+    width: 28px; height: 28px; border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer; display: grid; place-items: center;
+    transition: all 0.15s; color: var(--text-faint);
+  }
+  .icon-btn:hover.copy-btn { border-color: var(--accent2); color: var(--accent2); background: var(--tag-bg); }
+  .icon-btn:hover.del-btn  { border-color: var(--danger); color: var(--danger); background: rgba(248,81,73,0.08); }
+  .icon-btn:hover.edit-btn { border-color: #58A6FF; color: #58A6FF; background: rgba(88,166,255,0.08); }
+  .icon-btn.copied { border-color: var(--success); color: var(--success); background: rgba(63,185,80,0.1); }
+
+  .card-body {
+    font-size: 12.5px; color: var(--text-muted); line-height: 1.7;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-body.expanded { -webkit-line-clamp: unset; }
+  .expand-btn {
+    font-size: 11px; color: var(--accent2); background: none;
+    border: none; cursor: pointer; padding: 0; font-family: 'Inter';
+    transition: opacity 0.15s; text-align: left;
+  }
+  .expand-btn:hover { opacity: 0.7; }
+
+  .card-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .cat-chip {
+    font-size: 10px; padding: 2px 8px;
+    border-radius: 5px; font-weight: 600;
+    letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .card-tag {
+    font-size: 10.5px; color: var(--accent2);
+    background: var(--tag-bg); border: 1px solid var(--tag-border);
+    border-radius: 20px; padding: 1px 8px;
+  }
+  .card-date { margin-left: auto; font-size: 10px; color: var(--text-faint); }
+
+  /* ── CATEGORY COLORS ── */
+  [data-cat="寫作"]   { background: rgba(255,179,71,0.12); color: #FFA940; }
+  [data-cat="程式"]   { background: rgba(63,185,80,0.12); color: #3FB950; }
+  [data-cat="分析"]   { background: rgba(88,166,255,0.12); color: #58A6FF; }
+  [data-cat="創意"]   { background: rgba(248,81,73,0.12); color: #F85149; }
+  [data-cat="商業"]   { background: rgba(167,139,250,0.12); color: #A78BFA; }
+  [data-cat="學習"]   { background: rgba(56,189,248,0.12); color: #38BDF8; }
+  [data-cat="其他"]   { background: rgba(139,148,158,0.12); color: #8B949E; }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center; padding: 60px 20px;
+    color: var(--text-faint);
+  }
+  .empty svg { opacity: 0.2; margin-bottom: 16px; }
+  .empty p { font-size: 14px; line-height: 1.8; }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+    z-index: 100; place-items: center;
+  }
+  .modal-overlay.open { display: grid; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 28px;
+    width: min(480px, 90vw);
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(12px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800;
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .modal-title::before { content: '✦'; color: var(--accent2); font-size: 12px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; padding: 10px 0; font-size: 13px; }
+  .btn-ghost { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--border); color: var(--text); }
+
+  /* ── TOAST ── */
+  .toast-area { position: fixed; bottom: 28px; right: 28px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px;
+    font-size: 13px; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+    animation: toastIn 0.3s ease both;
+    max-width: 280px; pointer-events: all;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes toastOut {
+    to { opacity: 0; transform: translateX(20px); }
+  }
+  .toast.out { animation: toastOut 0.25s ease forwards; }
+  .toast-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 760px) {
+    header { padding: 20px 16px 0; }
+    main { grid-template-columns: 1fr; padding: 16px 16px 80px; }
+    .sidebar { position: static; }
+    .prompt-grid { grid-template-columns: 1fr; }
+    .cat-list { flex-direction: row; flex-wrap: wrap; display: flex; }
+    .sort-select { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">⚡</div>
+  <h1>Prompt Vault</h1>
+  <div class="count-badge"><span id="totalCount">0</span> 則提示詞</div>
+</header>
+
+<main>
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <!-- ADD FORM -->
+    <div class="panel">
+      <div class="panel-head">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a1 1 0 0 1 1 1v6h6a1 1 0 1 1 0 2H9v6a1 1 0 1 1-2 0V9H1a1 1 0 0 1 0-2h6V1a1 1 0 0 1 1-1z"/></svg>
+        新增提示詞
+      </div>
+      <div class="form-wrap">
+        <div>
+          <label>標題</label>
+          <input type="text" id="fTitle" placeholder="為這個提示詞取個名稱…">
+        </div>
+        <div>
+          <label>提示詞內容</label>
+          <textarea id="fContent" placeholder="在這裡貼上或輸入提示詞…"></textarea>
+        </div>
+        <div>
+          <label>分類</label>
+          <select id="fCat">
+            <option value="寫作">寫作</option>
+            <option value="程式">程式</option>
+            <option value="分析">分析</option>
+            <option value="創意">創意</option>
+            <option value="商業">商業</option>
+            <option value="學習">學習</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div>
+          <label>標籤</label>
+          <div class="tag-input-row">
+            <input type="text" id="fTagInput" placeholder="輸入標籤後按 Enter 或加入">
+            <button class="btn btn-sm" id="addTagBtn">加入</button>
+          </div>
+          <div class="tag-pills" id="fTagPills" style="margin-top:8px;"></div>
+        </div>
+        <button class="btn btn-primary" id="saveBtn">儲存提示詞</button>
+      </div>
+    </div>
+
+    <!-- CATEGORY NAV -->
+    <div class="panel">
+      <div class="panel-head">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V2zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V2zM1 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7zm5 0a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1V7z"/></svg>
+        分類瀏覽
+      </div>
+      <div class="cat-list" id="catList"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── CONTENT ── -->
+  <div class="content-area">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg>
+        <input type="text" id="searchInput" placeholder="搜尋標題、內容或標籤…">
+      </div>
+      <select class="sort-select" id="sortSelect">
+        <option value="newest">最新優先</option>
+        <option value="oldest">最舊優先</option>
+        <option value="az">A → Z</option>
+      </select>
+    </div>
+
+    <div class="prompt-grid" id="promptGrid"></div>
+  </div>
+</main>
+
+<!-- ── EDIT MODAL ── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">編輯提示詞</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <label>標題</label>
+        <input type="text" id="eTitle" placeholder="標題">
+      </div>
+      <div>
+        <label>提示詞內容</label>
+        <textarea id="eContent" style="min-height:140px;" placeholder="提示詞內容"></textarea>
+      </div>
+      <div>
+        <label>分類</label>
+        <select id="eCat">
+          <option value="寫作">寫作</option>
+          <option value="程式">程式</option>
+          <option value="分析">分析</option>
+          <option value="創意">創意</option>
+          <option value="商業">商業</option>
+          <option value="學習">學習</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div>
+        <label>標籤</label>
+        <div class="tag-input-row">
+          <input type="text" id="eTagInput" placeholder="新增標籤">
+          <button class="btn btn-sm" id="eAddTagBtn">加入</button>
+        </div>
+        <div class="tag-pills" id="eTagPills" style="margin-top:8px;"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelEdit">取消</button>
+      <button class="btn btn-primary" id="confirmEdit">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DELETE CONFIRM MODAL ── -->
+<div class="modal-overlay" id="delModal">
+  <div class="modal">
+    <div class="modal-title" style="color:var(--danger);">確認刪除</div>
+    <p style="font-size:14px;color:var(--text-muted);line-height:1.7;">即將刪除「<strong id="delTitle" style="color:var(--text);"></strong>」，此操作無法復原。</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelDel">取消</button>
+      <button class="btn btn-primary" id="confirmDel" style="background:var(--danger);box-shadow:0 4px 18px rgba(248,81,73,0.3);">確認刪除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOAST AREA ── -->
+<div class="toast-area" id="toastArea"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────
+const STORE_KEY = 'promptVault_v1';
+let prompts = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+let filterCat = 'all';
+let editTags = [];
+let addTags = [];
+let pendingDeleteId = null;
+let editingId = null;
+
+// ── HELPERS ────────────────────────────────────────────────
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(prompts)); }
+function uid()  { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+}
+
+// ── TOAST ──────────────────────────────────────────────────
+function toast(msg, type = 'ok') {
+  const colors = { ok: '#3FB950', err: '#F85149', info: '#A78BFA' };
+  const area = document.getElementById('toastArea');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div class="toast-dot" style="background:${colors[type]||colors.ok}"></div>${msg}`;
+  area.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); el.addEventListener('animationend', () => el.remove()); }, 2400);
+}
+
+// ── TAG MANAGER ────────────────────────────────────────────
+function renderTagPills(tags, container, onRemove) {
+  container.innerHTML = '';
+  tags.forEach((t, i) => {
+    const p = document.createElement('div');
+    p.className = 'tag-pill';
+    p.innerHTML = `${t}<button title="移除">&times;</button>`;
+    p.querySelector('button').addEventListener('click', () => { onRemove(i); });
+    container.appendChild(p);
+  });
+}
+
+function setupTagInput(inputId, btnId, pillsId, tagsRef, setter) {
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  const pills = document.getElementById(pillsId);
+  const add = () => {
+    const v = inp.value.trim();
+    if (!v || tagsRef.includes(v)) { inp.value = ''; return; }
+    setter([...tagsRef, v]);
+    inp.value = '';
+    renderTagPills(tagsRef, pills, (i) => { const t=[...tagsRef]; t.splice(i,1); setter(t); renderTagPills(tagsRef, pills, arguments.callee); });
+  };
+  btn.addEventListener('click', add);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+}
+
+// re-bind after each state change
+function bindAddTags() {
+  setupTagInput('fTagInput','addTagBtn','fTagPills', addTags, (v) => { addTags = v; renderTagPillsAdd(); });
+  renderTagPillsAdd();
+}
+function renderTagPillsAdd() {
+  renderTagPills(addTags, document.getElementById('fTagPills'), (i) => {
+    addTags.splice(i, 1); renderTagPillsAdd();
+  });
+}
+function bindEditTags() {
+  setupTagInput('eTagInput','eAddTagBtn','eTagPills', editTags, (v) => { editTags = v; renderTagPillsEdit(); });
+  renderTagPillsEdit();
+}
+function renderTagPillsEdit() {
+  renderTagPills(editTags, document.getElementById('eTagPills'), (i) => {
+    editTags.splice(i, 1); renderTagPillsEdit();
+  });
+}
+
+// ── CATEGORY NAV ──────────────────────────────────────────
+const CATS = ['全部', '寫作', '程式', '分析', '創意', '商業', '學習', '其他'];
+function renderCatList() {
+  const el = document.getElementById('catList');
+  el.innerHTML = '';
+  CATS.forEach(c => {
+    const key = c === '全部' ? 'all' : c;
+    const cnt = c === '全部' ? prompts.length : prompts.filter(p => p.cat === c).length;
+    const item = document.createElement('div');
+    item.className = 'cat-item' + (filterCat === key ? ' active' : '');
+    item.innerHTML = `<span>${c}</span><span class="cat-count">${cnt}</span>`;
+    item.addEventListener('click', () => { filterCat = key; renderAll(); });
+    el.appendChild(item);
+  });
+}
+
+// ── GRID RENDER ────────────────────────────────────────────
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const sort = document.getElementById('sortSelect').value;
+  let list = [...prompts];
+  if (filterCat !== 'all') list = list.filter(p => p.cat === filterCat);
+  if (q) list = list.filter(p =>
+    p.title.toLowerCase().includes(q) ||
+    p.content.toLowerCase().includes(q) ||
+    (p.tags || []).some(t => t.toLowerCase().includes(q))
+  );
+  if (sort === 'newest') list.sort((a,b) => b.ts - a.ts);
+  else if (sort === 'oldest') list.sort((a,b) => a.ts - b.ts);
+  else list.sort((a,b) => a.title.localeCompare(b.title, 'zh-Hant'));
+  return list;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('promptGrid');
+  const list = getFiltered();
+  grid.innerHTML = '';
+
+  if (list.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = `
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <p>沒有找到提示詞<br><span style="font-size:12px;">試著調整搜尋條件，或新增你的第一則提示詞</span></p>`;
+    grid.appendChild(empty);
+    return;
+  }
+
+  list.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'prompt-card';
+    card.dataset.id = p.id;
+    const tagsHtml = (p.tags||[]).map(t => `<span class="card-tag">#${t}</span>`).join('');
+    card.innerHTML = `
+      <div class="card-top">
+        <div class="card-title">${escHtml(p.title)}</div>
+        <div class="card-actions">
+          <button class="icon-btn edit-btn" title="編輯" data-id="${p.id}">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg>
+          </button>
+          <button class="icon-btn copy-btn" title="複製" data-id="${p.id}">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          </button>
+          <button class="icon-btn del-btn" title="刪除" data-id="${p.id}">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="card-body" id="body-${p.id}">${escHtml(p.content)}</div>
+      <button class="expand-btn" id="exp-${p.id}" data-id="${p.id}">展開全文 ▾</button>
+      <div class="card-footer">
+        <span class="cat-chip" data-cat="${p.cat}">${p.cat}</span>
+        ${tagsHtml}
+        <span class="card-date">${fmtDate(p.ts)}</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  // bind card buttons
+  grid.querySelectorAll('.copy-btn').forEach(btn => btn.addEventListener('click', handleCopy));
+  grid.querySelectorAll('.del-btn').forEach(btn => btn.addEventListener('click', handleDelOpen));
+  grid.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', handleEditOpen));
+  grid.querySelectorAll('.expand-btn').forEach(btn => btn.addEventListener('click', handleExpand));
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── ACTIONS ────────────────────────────────────────────────
+function handleCopy(e) {
+  const id = e.currentTarget.dataset.id;
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  navigator.clipboard.writeText(p.content).then(() => {
+    e.currentTarget.classList.add('copied');
+    setTimeout(() => e.currentTarget.classList.remove('copied'), 1500);
+    const card = document.querySelector(`.prompt-card[data-id="${id}"]`);
+    if (card) { card.classList.add('shimmer'); card.addEventListener('animationend', () => card.classList.remove('shimmer'), {once:true}); }
+    toast('已複製到剪貼簿！', 'ok');
+  });
+}
+
+function handleExpand(e) {
+  const id = e.currentTarget.dataset.id;
+  const body = document.getElementById('body-' + id);
+  const expanded = body.classList.toggle('expanded');
+  e.currentTarget.textContent = expanded ? '收起 ▴' : '展開全文 ▾';
+}
+
+function handleDelOpen(e) {
+  const id = e.currentTarget.dataset.id;
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  pendingDeleteId = id;
+  document.getElementById('delTitle').textContent = p.title;
+  document.getElementById('delModal').classList.add('open');
+}
+
+function handleEditOpen(e) {
+  const id = e.currentTarget.dataset.id;
+  const p = prompts.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  editTags = [...(p.tags||[])];
+  document.getElementById('eTitle').value = p.title;
+  document.getElementById('eContent').value = p.content;
+  document.getElementById('eCat').value = p.cat;
+  bindEditTags();
+  document.getElementById('editModal').classList.add('open');
+}
+
+// ── SAVE NEW ───────────────────────────────────────────────
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const title = document.getElementById('fTitle').value.trim();
+  const content = document.getElementById('fContent').value.trim();
+  const cat = document.getElementById('fCat').value;
+  if (!title) { toast('請輸入標題', 'err'); document.getElementById('fTitle').focus(); return; }
+  if (!content) { toast('請輸入提示詞內容', 'err'); document.getElementById('fContent').focus(); return; }
+  prompts.push({ id: uid(), title, content, cat, tags: [...addTags], ts: Date.now() });
+  save();
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fContent').value = '';
+  addTags = [];
+  bindAddTags();
+  toast('提示詞已儲存 ✦', 'ok');
+  renderAll();
+});
+
+// ── CONFIRM EDIT ──────────────────────────────────────────
+document.getElementById('confirmEdit').addEventListener('click', () => {
+  const title = document.getElementById('eTitle').value.trim();
+  const content = document.getElementById('eContent').value.trim();
+  const cat = document.getElementById('eCat').value;
+  if (!title || !content) { toast('標題與內容不得為空', 'err'); return; }
+  const idx = prompts.findIndex(p => p.id === editingId);
+  if (idx > -1) { prompts[idx] = { ...prompts[idx], title, content, cat, tags: [...editTags] }; }
+  save();
+  document.getElementById('editModal').classList.remove('open');
+  toast('變更已儲存', 'info');
+  renderAll();
+});
+document.getElementById('cancelEdit').addEventListener('click', () => document.getElementById('editModal').classList.remove('open'));
+
+// ── CONFIRM DELETE ─────────────────────────────────────────
+document.getElementById('confirmDel').addEventListener('click', () => {
+  prompts = prompts.filter(p => p.id !== pendingDeleteId);
+  save();
+  document.getElementById('delModal').classList.remove('open');
+  toast('已刪除', 'err');
+  renderAll();
+});
+document.getElementById('cancelDel').addEventListener('click', () => document.getElementById('delModal').classList.remove('open'));
+
+// close modal on overlay click
+['editModal','delModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) document.getElementById(id).classList.remove('open');
+  });
+});
+
+// ── SEARCH & SORT ──────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', renderGrid);
+document.getElementById('sortSelect').addEventListener('change', renderGrid);
+
+// ── FULL RENDER ────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('totalCount').textContent = prompts.length;
+  renderCatList();
+  renderGrid();
+}
+
+// ── INIT ───────────────────────────────────────────────────
+bindAddTags();
+renderAll();
+</script>
+</body>
+</html>
